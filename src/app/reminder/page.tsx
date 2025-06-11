@@ -18,6 +18,7 @@ import {
 import "./index.css";
 import { currentMonitor, getCurrentWindow } from "@tauri-apps/api/window";
 import { STORE_NAME } from "@/lib/constants";
+import { usePlatform } from "@/hooks/use-platform";
 
 function hideWindowAction() {
   invoke("hide_reminder_windows");
@@ -69,26 +70,22 @@ function getTodayDate() {
 const waterOptions = [{ ml: 50 }, { ml: 100 }, { ml: 200 }, { ml: 300 }];
 
 const reminderTexts = [
-  "补充一下能量吧，让身体充满活力 ✨",
-  "每一口水都是对健康的投资 💧",
-  "喝水时刻，让生活更有滋味 🌊",
-  "来杯水，让身体清爽一下 ⚡️",
-  "保持水分，保持好心情 🎵",
-  "给细胞们补充点能量吧 💪",
-  "每天八杯水，健康不用愁 🎯",
-  "喝水时间到，让身体充电啦 🔋",
-  "水是生命之源，别让身体缺水哦 💎",
-  "来一杯清凉，让大脑更清醒 🧊",
-  "喝水小憩，让工作更高效 ⭐️",
-  "每一口水都是对自己的关爱 💝",
-  "保持水分，保持美丽 ✨",
-  "让水分滋润你的一天 🌈",
-  "喝水时刻，让身体更轻松 🎐",
-  "补充能量的最佳时机 ⚡️",
-  "来杯水，让心情更舒畅 🎵",
-  "每一口水都是健康的积累 🌱",
-  "保持水分，保持活力 💫",
-  "让水分为你的健康加分 🎯",
+  "每天建议饮水1500~1700ml，约7~8杯，保持健康水分 💧",
+  "建议少量多次饮水，每次不超过200ml，呵护心肾健康 ❤️",
+  "观察尿液颜色：淡黄色最健康，深黄需补水，无色可能过量 🌟",
+  "晨起来杯温水(200~300ml)，补充夜间水分，促进代谢 🌅",
+  "餐前1小时喝水(100~150ml)，帮助消化，事半功倍 🍽️",
+  "睡前1小时少量饮水(约100ml)，但别太多影响睡眠 😴",
+  "运动后15分钟内补充200~300ml，平衡身体电解质 💪",
+  "久坐办公记得每小时喝水100~150ml，保持清醒专注 💻",
+  "喝35~40℃的水最好，太烫可能伤害身体，要适温 🌡️",
+  "白开水和矿泉水是最佳选择，安全又健康 ✨",
+  "不要用饮料代替水，果汁奶茶糖分高，咖啡浓茶会利尿 🥤",
+  "饭中少喝水，可能影响消化，建议餐后半小时再补水 ⏰",
+  "不要等到口渴才喝水，那时已经轻度脱水啦 💦",
+  "水肿不是因为喝太多水，反而可能是喝得太少 💭",
+  "高温天气补充淡盐水，平衡身体流失的钠钾 🌞",
+  "乘坐飞机要多喝水，机舱很干燥，每小时喝100~150ml ✈️",
 ];
 
 export default function ReminderPage() {
@@ -99,13 +96,19 @@ export default function ReminderPage() {
   });
   const [countdown, setCountdown] = useState(30);
   const [monitorName, setMonitorName] = useState("");
+  const { isLinux } = usePlatform();
   // 按天存储饮水量
   const todayDate = getTodayDate();
 
   // 根据饮水量随机选择提醒文案
   useEffect(() => {
-    setReminderText(
-      reminderTexts[Math.floor(Math.random() * reminderTexts.length)]
+    setTimeout(
+      () => {
+        setReminderText(
+          reminderTexts[Math.floor(Math.random() * reminderTexts.length)]
+        );
+      },
+      reminderText ? 1000 : 0
     );
   }, [water.drink]);
 
@@ -139,6 +142,27 @@ export default function ReminderPage() {
       unregisterAll();
     };
   }, []);
+
+  useEffect(() => {
+    // 添加键盘事件监听作为 Linux 下的备选方案
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        console.log("Esc key detected via keyboard event");
+        hideWindowAction();
+      }
+    };
+
+    // 在 Linux 系统上添加键盘事件监听
+    if (isLinux) {
+      document.addEventListener("keydown", handleKeyDown);
+    }
+
+    return () => {
+      if (isLinux) {
+        document.removeEventListener("keydown", handleKeyDown);
+      }
+    };
+  }, [isLinux]);
 
   useEffect(() => {
     if (!monitorName) return;
@@ -193,10 +217,13 @@ export default function ReminderPage() {
 
     // 添加关闭动画
     setIsClosing(true);
-    setTimeout(() => {
-      hideWindowAction();
-      setIsClosing(false);
-    }, 800); // 等待动画完成后关闭
+    setTimeout(
+      () => {
+        hideWindowAction();
+        setIsClosing(false);
+      },
+      isLinux ? 100 : 300
+    ); // Linux 系统下无透明度，设置延时为 0，其他系统为 300ms
   };
 
   const progress = (water.drink / water.gold) * 100;
@@ -206,7 +233,7 @@ export default function ReminderPage() {
       onContextMenu={(e) => {
         if (process.env.NODE_ENV === "production") e.preventDefault();
       }}
-      className={`reminder-page min-h-screen flex items-center justify-center relative transition-opacity duration-800 ${
+      className={`reminder-page min-h-screen flex items-center justify-center relative transition-opacity duration-300 ${
         isClosing ? "opacity-0" : "opacity-100"
       }`}
     >
@@ -214,7 +241,7 @@ export default function ReminderPage() {
         {countdown}s 后自动关闭
       </div>
       <div
-        className={`bg-white/30 backdrop-blur-sm p-8 rounded-2xl shadow-lg max-w-md w-full z-10 border border-white/20 transition-all duration-300 ${
+        className={`bg-white/30 backdrop-blur-sm p-8 rounded-2xl shadow-lg max-w-lg w-full z-10 border border-white/20 transition-all duration-100 ${
           isClosing ? "scale-95 opacity-0" : "scale-100 opacity-100"
         }`}
       >
@@ -237,7 +264,7 @@ export default function ReminderPage() {
               key={option.ml}
               tabIndex={-1}
               onClick={() => handleWaterSelection(option.ml)}
-              className="group relative p-6 rounded-xl transition-all duration-200 cursor-pointer bg-blue-50 hover:bg-blue-100 hover:scale-105 active:scale-95 text-blue-700 flex items-center justify-center"
+              className="group relative p-6 rounded-xl transition-all duration-300 cursor-pointer bg-blue-50 hover:bg-blue-100 hover:scale-105 active:scale-95 text-blue-700 flex items-center justify-center"
             >
               <div className="flex items-baseline gap-1">
                 <span className="text-3xl font-medium">{option.ml}</span>
@@ -251,7 +278,7 @@ export default function ReminderPage() {
           <button
             onClick={hideWindowAction}
             tabIndex={-1}
-            className="text-gray-500 hover:text-gray-700 text-sm inline-flex items-center gap-1.5 transition-colors duration-200 cursor-pointer"
+            className="text-gray-500 hover:text-gray-700 text-sm inline-flex items-center gap-1.5 transition-colors duration-300 cursor-pointer"
           >
             跳过
             <ArrowRight className="w-4 h-4" />

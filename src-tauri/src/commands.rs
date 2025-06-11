@@ -49,7 +49,7 @@ fn countdown_async(app_handle: tauri::AppHandle) {
     });
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 #[tauri::command]
 pub fn call_reminder(app_handle: tauri::AppHandle) -> bool {
     println!("call_reminder");
@@ -62,9 +62,9 @@ pub fn call_reminder(app_handle: tauri::AppHandle) -> bool {
     true
 }
 
-// TODO: windows的command居然要加async，笑死，浪费我2个晚上的时间
-// https://github.com/tauri-apps/wry/issues/583
 #[cfg(target_os = "windows")]
+// windows的command居然要加async，笑死，浪费我2个晚上的时间
+// https://github.com/tauri-apps/wry/issues/583
 #[tauri::command]
 pub async fn call_reminder(app_handle: tauri::AppHandle) -> bool {
     println!("call_reminder");
@@ -138,6 +138,9 @@ pub struct AppRuntimeInfoResponse {
     is_running: bool,
     app_settings: AppSettings,
     version: String,
+    os_version: String,
+    os_arch: String,
+    chip_info: String,
 }
 
 #[tauri::command(async)]
@@ -148,14 +151,37 @@ pub async fn get_app_runtime_info(
     let is_running = IS_RUNNING.load(Ordering::SeqCst);
     let version = app_handle.package_info().version.to_string();
 
+    // 获取操作系统信息
+    let os_info = format!("{} {}", std::env::consts::OS, std::env::consts::ARCH);
+    let os_arch = std::env::consts::ARCH.to_string();
+
+    // 获取芯片信息
+    let chip_info = {
+        #[cfg(target_os = "macos")]
+        {
+            let output = std::process::Command::new("sysctl")
+                .args(["-n", "machdep.cpu.brand_string"])
+                .output()
+                .map_err(|e| e.to_string())?;
+            String::from_utf8_lossy(&output.stdout).trim().to_string()
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            "Unknown".to_string()
+        }
+    };
+
     Ok(AppRuntimeInfoResponse {
         app_settings,
         is_running,
         version,
+        os_version: os_info,
+        os_arch,
+        chip_info,
     })
 }
 
 #[tauri::command]
-pub fn get_installed_apps(app_handle: tauri::AppHandle) -> Vec<String> {
-    util::get_installed_apps(&app_handle)
+pub async fn get_installed_apps() -> Vec<String> {
+    util::get_installed_apps().await
 }

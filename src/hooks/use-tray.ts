@@ -9,6 +9,7 @@ import {
 import { invoke } from "@tauri-apps/api/core";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { getVersion } from "@tauri-apps/api/app";
+import { platform } from "@tauri-apps/plugin-os";
 
 const TRAY_ID = "main-tray";
 
@@ -34,11 +35,18 @@ export function useTray() {
       await MenuItem.new({
         text: "偏好设置",
         action: async () => {
-          console.log("打开设置");
+          // 尝试获取并显示主窗口
           const mainWindow = await WebviewWindow.getByLabel("main");
-          // mainWindow?.setDecorations(true);
-          mainWindow?.show();
-          mainWindow?.setFocus();
+
+          if (mainWindow) {
+            // 尝试取消最小化（如果窗口被最小化了）
+            const isMinimized = await mainWindow.isMinimized();
+            if (isMinimized) await mainWindow.unminimize();
+
+            // 显示窗口
+            await mainWindow.show();
+            await mainWindow.setFocus();
+          }
         },
       })
     );
@@ -74,10 +82,25 @@ export function useTray() {
 
     await menu.append(await PredefinedMenuItem.new({ item: "Separator" }));
 
-    // TODO: 增加检查更新
-    await menu.append(
-      await PredefinedMenuItem.new({ text: "退出", item: "Quit" })
-    );
+    // 根据平台选择不同的退出菜单实现
+    const currentPlatform = await platform();
+    if (currentPlatform === "linux") {
+      // Linux 系统使用普通的 MenuItem
+      await menu.append(
+        await MenuItem.new({
+          text: "退出",
+          action: async () => {
+            console.log("退出应用");
+            invoke("quit");
+          },
+        })
+      );
+    } else {
+      // 其他平台使用 PredefinedMenuItem
+      await menu.append(
+        await PredefinedMenuItem.new({ text: "退出", item: "Quit" })
+      );
+    }
 
     return menu;
   }, []);
