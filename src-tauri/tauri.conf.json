@@ -4,9 +4,9 @@
   "version": "0.2.7",
   "identifier": "com.shui.app",
   "build": {
-    "beforeDevCommand": "yarn dev",
+    "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:3000/",
-    "beforeBuildCommand": "yarn build",
+    "beforeBuildCommand": "pnpm build",
     "frontendDist": "../dist"
   },
   "app": {
@@ -36,9 +36,7 @@
         "titleBarStyle": "Overlay",
         "dragDropEnabled": false,
         "windowEffects": {
-          "effects": [
-            "sidebar"
-          ],
+          "effects": ["sidebar"],
           "state": "active"
         }
       }
@@ -60,9 +58,7 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": [
-      "icons/**/*"
-    ]
+    "resources": ["icons/**/*"]
   },
   "plugins": {
     "updater": {
